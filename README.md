@@ -40,73 +40,150 @@ The project is designed as a **cloud-native application** with a Kubernetes clus
 
 ---
 
+
 ## 🚀 Deployment Steps
 
-### 🛠 Local Development
-1. **Set up Kubernetes**:
-   Install Docker and Minikube (or another local Kubernetes setup).
-   
-2. **Deploy Redis & Min.io**:
-   Use the provided script to simplify setup:
-   ```bash
-   ./deploy-local-dev.sh
-   ```
+### 1️⃣ **Start Minikube**
 
-3. **Build Docker Images**:
+1. Open a terminal and start Minikube:
    ```bash
-   docker build -t msas-rest:1.0 rest/
-   docker build -t msas-worker:1.0 worker/
+   minikube start
    ```
+   Ensure Minikube uses the Docker driver and initializes correctly.
 
-4. **Apply Kubernetes Manifests**:
+2. To stop Minikube later (if needed):
    ```bash
-   kubectl apply -f kubernetes/deployment.yaml
-   ```
-
-5. **Port Forward for Local Testing**:
-   ```bash
-   kubectl port-forward --address 0.0.0.0 service/redis 6379:6379 &
-   kubectl port-forward --namespace minio-ns svc/myminio-proj 9000:9000 &
+   minikube stop
    ```
 
 ---
 
-### ☁️ Cloud Deployment (GKE or Similar)
-1. **Create a Kubernetes Cluster**:
-   Use GKE or your preferred cloud provider.
+### 2️⃣ **Set Up Min.io**
 
-2. **Push Docker Images**:
+1. Add the Bitnami Helm repository:
    ```bash
-   docker tag msas-rest:1.0 gcr.io/<your-project-id>/msas-rest:1.0
-   docker push gcr.io/<your-project-id>/msas-rest:1.0
+   helm repo add bitnami https://charts.bitnami.com/bitnami
    ```
 
-3. **Update Kubernetes Manifests**:
-   Replace local image references with your container registry URLs.
-
-4. **Deploy to the Cluster**:
+2. Install Min.io with Helm into a specific namespace (`minio-ns`):
    ```bash
-   kubectl apply -f kubernetes/deployment.yaml
+   helm install -f minio/minio-config.yaml -n minio-ns --create-namespace minio-proj bitnami/minio
    ```
 
-5. **Monitor Logs**:
+3. Once deployed, note the Min.io DNS or access credentials by running:
    ```bash
-   kubectl logs -l app=rest
-   kubectl logs -l app=worker
+   kubectl get svc -n minio-ns
+   ```
+
+4. Port forward the Min.io service for local access:
+   ```bash
+   kubectl port-forward --namespace minio-ns svc/minio-proj 9000:9000
    ```
 
 ---
 
-## 🧪 Testing
+### 3️⃣ **Deploy Redis**
 
-### Sample Requests
-Two scripts are provided to simulate usage:
-- **`sample-requests.py`**: Processes full MP3 files.
-- **`short-sample-requests.py`**: Processes smaller files for faster iteration.
+1. Navigate to the Redis deployment folder:
+   ```bash
+   cd redis/
+   ```
 
-```bash
-python sample-requests.py --host localhost --port 5000
-```
+2. Apply the Redis deployment YAMLs:
+   ```bash
+   kubectl apply -f redis-deployment.yaml
+   kubectl apply -f redis-service.yaml
+   ```
+
+3. Port forward Redis for local development:
+   ```bash
+   kubectl port-forward svc/redis 6379:6379
+   ```
+
+---
+
+### 4️⃣ **Build and Deploy the REST Service**
+
+1. Build the REST service Docker image:
+   ```bash
+   docker build -f Dockerfile -t <your-docker-hub-username>/demucs-rest .
+   ```
+
+2. Push the image to Docker Hub:
+   ```bash
+   docker push <your-docker-hub-username>/demucs-rest
+   ```
+
+3. Apply the REST service deployment:
+   ```bash
+   kubectl apply -f rest/rest-deployment.yaml
+   kubectl apply -f rest/rest-service.yaml
+   kubectl apply -f rest/rest-ingress.yaml
+   ```
+
+4. Port forward the REST service for local access:
+   ```bash
+   kubectl port-forward svc/demucs-rest 5000:5000
+   ```
+
+---
+
+### 5️⃣ **Build and Deploy the Worker Service**
+
+1. Navigate to the Worker service folder:
+   ```bash
+   cd worker/
+   ```
+
+2. Build the Worker service Docker image:
+   ```bash
+   docker build -f Dockerfile -t <your-docker-hub-username>/demucs-worker .
+   ```
+
+3. Push the image to Docker Hub:
+   ```bash
+   docker push <your-docker-hub-username>/demucs-worker
+   ```
+
+4. Apply the Worker deployment:
+   ```bash
+   kubectl apply -f worker/worker-deployment.yaml
+   ```
+
+---
+
+### 6️⃣ **Verify Deployments**
+
+1. Check if all pods are running:
+   ```bash
+   kubectl get pods
+   ```
+
+2. View logs for the REST or Worker services to verify functionality:
+   ```bash
+   kubectl logs <pod-name>
+   ```
+
+3. If any issues arise, debug using:
+   ```bash
+   kubectl describe pod <pod-name>
+   ```
+
+---
+
+### 7️⃣ **Test the Setup**
+
+1. Use the REST service endpoint exposed on port 5000 to submit a file for processing.
+
+2. Test with the provided `sample-requests.py` or `short-sample-requests.py`:
+   ```bash
+   python sample-requests.py --host localhost --port 5000
+   ```
+
+---
+
+This step-by-step guide reflects the deployment process for this project. If you face any issues, revisit logs and debug accordingly. Let’s make music separation seamless!
+
 
 ### Sample Output
 - Processed audio tracks stored in the `output` bucket in Min.io.
@@ -149,24 +226,9 @@ python sample-requests.py --host localhost --port 5000
 
 ---
 
-## ✨ Recruiter Note
-
-This project demonstrates my ability to:
-- Build **scalable microservices** for real-world applications.
-- Apply **cloud-native principles** to architect robust solutions.
-- Write clean, maintainable code following industry best practices.
-- Solve **complex problems** with innovative and efficient approaches.
-
-If you're looking for someone who can **deliver results**, **think creatively**, and **drive projects to success**, let's connect! 🚀
-
----
-
 ## 🤝 Contributing
 
 Feel free to fork this repository and submit pull requests. All suggestions are welcome!
 
 ---
 
-## 📜 License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
